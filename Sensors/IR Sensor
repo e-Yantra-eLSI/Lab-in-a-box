@@ -1,0 +1,14 @@
+module IR (clk,ir,led);
+  input clk;
+  input ir;
+  output reg led;
+
+  always @(posedge clk) begin
+
+    if (ir == 0) 
+    led = 1;
+
+    else led = 0;
+
+  end
+endmodule
