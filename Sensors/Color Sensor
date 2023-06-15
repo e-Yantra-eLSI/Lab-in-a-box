@@ -1,0 +1,79 @@
+// Main Module
+module ColourSensor(input clk,input fo,output S2, output S3,output reg ledR, output reg ledB, output reg ledG);
+wire [31:0] R,G,B;
+colour_sensor clrsense(clk,fo,R,B,G,S2,S3);   //calling submodule
+always @(posedge clk)begin
+if((B>50)&(B<160)&(R>300)&(R<400)&(G>70)&(G<120)) begin
+    ledR = 1'b1;
+    ledG = 1'b0;
+    ledB = 1'b0;
+    end
+   
+    else if ((B>150)&(B<200)&(R>200)&(R<250)&(G>300)&(G<350)) begin
+    ledG = 1'b1;
+    ledB = 1'b0;
+    ledB = 1'b0;
+    end
+    else if((B>350)&(B<440)&(R>60)&(R<130)&(G>90)&(G<190)) begin
+    ledR = 1'b0;
+    ledG = 1'b0;
+    ledB = 1'b1;
+    end
+    else begin
+    ledB=0;
+    ledG=0;
+    ledR=0;
+    end
+end
+end
+endmodule
+//submodule
+module colour_sensor(clk,fo, Ri,Bi,Gi,S2,S3);
+input clk,fo;
+output [31:0]Ri,Bi,Gi;
+reg [31:0] arr [2:0];
+output reg S2,S3;
+reg c;
+reg [1:0] Sel;
+integer count=0,tc,Clk_Count;
+//tc: stors temporary values of count do that count does not keep changing
+//Clk_count to count  for 5Mhz/4 cycles and change filter
+initial begin
+tc=0;c=0;
+end
+always @(posedge clk)begin
+    case(Sel)
+    2'b00:begin S2 = 0; S3=0; end
+    2'b01: begin S2=0; S3 = 1; end
+    2'b10: begin S2 = 1; S3 = 1; end
+    endcase
+   
+    if(Clk_Count==50000000/4)//using 50Mhz clk and changing filter type every 5Mhz/4 counts
+    begin
+        Clk_Count=0;
+        arr[Sel]=count;
+        Sel=Sel+1;  
+        end
+    else
+    Clk_Count= Clk_Count+1;
+   
+    if(Sel>2'b10)
+    Sel=2'b00;
+    if(fo)
+    begin
+    c=1;
+    tc= tc+1;
+    end
+    else begin
+    if(c==1)begin
+        count=tc;
+        c=0;
+        end
+        tc=0;
+        end
+        end
+       
+    assign Ri = 50000000/(2*arr[0]); //calculates Red value after counting its frequency
+    assign Bi = 50000000/(2*arr[1]); //calculates Blue value after counting its frequency
+    assign Gi = 50000000/(2*arr[2]); //calculates Green value after counting its frequency
+endmodule
