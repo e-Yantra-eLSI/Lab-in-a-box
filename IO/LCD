@@ -1,0 +1,121 @@
+module lcd(clk,rs,rw,en,data);
+
+input clk;
+output reg rs,rw,en;
+output reg [7:0]data;
+reg [29:0] count=0;
+integer m;      
+
+initial
+begin
+m=0;
+end
+
+always@(posedge clk)
+begin
+
+case(m)
+
+0: begin        
+
+count=count+1;
+data=8'h38;                 //initialization condition for 5x7 matrix
+rs=0;
+rw=0;
+en=1;
+if(count==10000000)         //10000000 is the count which gives a delay of 0.2sec                                                                                                                                                                                                                                                                                                                                                      
+en=0;
+
+end
+
+1: begin
+
+count=count+1;
+data=8'h0E;                 //initialization condition for display on cursor off
+rs=0;
+rw=0;
+en=1;
+
+if(count==10000000)
+en=0;
+
+end
+
+2: begin
+
+count=count+1;
+data=8'h01;                //initialization condition for clear LCD
+rs=0;
+rw=0;
+en=1;
+
+if(count==10000000)
+en=0;
+
+end
+
+3: begin
+
+count=count+1;
+data=8'h06;             //initialization condition for shift cursor right
+rs=0;
+rw=0;
+en=1;
+
+if(count==10000000)
+en=0;
+
+end
+
+4: begin
+
+count=count+1;
+data=8'h80;           //initialization condition for cursor at first line, position 1
+rs=0;
+rw=0;
+en=1;
+
+if(count==10000000)
+en=0;
+
+end
+
+5: begin
+
+count=count+1;
+data=72;       //ASCII value of H
+rs=1;
+rw=0;
+en=1;
+
+if(count==10000000)
+en=0;
+
+end
+
+6: begin
+
+count=count+1;
+data=105;   //ASCII value of i
+rs=1;
+rw=0;
+en=1;
+
+if(count==10000000)
+en=0;
+
+end
+
+endcase
+if(count==10000000)
+begin
+m=m+1;
+count=0;
+end
+
+
+if(count<10000000)
+m=m;
+
+end
+endmodule
