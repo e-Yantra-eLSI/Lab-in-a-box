@@ -1,1 +1,20 @@
+module blinkled (input  clk, output out);
+  reg [31:0] counter;
+  reg LED;
 
+  initial begin
+    LED = 1'b0;
+    counter = 32'b0;
+  end
+
+  always @(posedge clk) begin
+    if (counter < 25000000) counter <= counter + 1'b1;
+    else begin
+      LED <= ~LED;
+      counter <= 32'b0;
+    end
+  end
+
+  assign out = LED;
+
+endmodule
