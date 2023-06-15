@@ -1,0 +1,28 @@
+#include <reg51.h>  
+#include <stdio.h>
+
+void delay(void);
+
+sbit led = P0^0;  //setting the bit P0^0 to led
+
+void main()
+{
+  while(1)        //infinite loop
+  {
+    led = 0;      //led off
+    delay();
+    led = 1;      //led on
+    delay();
+  }
+}
+
+void delay()      //delay function
+{
+  int i,j;
+  for(i=0;i<500;i++)
+  {
+    for(j=0;j<1000;j++)
+    {
+    }
+  }
+}
