@@ -1,0 +1,25 @@
+import RPi.GPIO as GPIO  
+import time  
+
+GPIO.setmode(GPIO.BCM)           # Set up BCM GPIO numbering
+GPIO.setwarnings(False)          # disable warnings
+SWITCH_PIN = 23                  # Set GPIO23 as button    
+LED_PIN = 24                     # Set GPIO24 as LED pin
+GPIO.setup(SWITCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)     # Set Switch pin as input with pull-down
+GPIO.setup(LED_PIN, GPIO.OUT)    # Set LED pin as output
+
+GPIO.output(LED_PIN, GPIO.LOW)   # Set LED to LOW
+try:
+    while True:
+        # Check if button is pressed
+        if GPIO.input(SWITCH_PIN):
+            GPIO.output(LED_PIN, GPIO.HIGH)   # Set LED to HIGH if button is pressed
+            print("Button pressed")
+        else:
+            GPIO.output(LED_PIN, GPIO.LOW)    # Set LED to LOW if button is not pressed
+            print("Button not pressed")
+           
+except KeyboardInterrupt:                     # If CTRL+C is pressed, exit cleanly:
+    pass
+
+GPIO.cleanup()
