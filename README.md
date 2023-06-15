@@ -1,1 +1,0 @@
-# Lab-in-a-box
