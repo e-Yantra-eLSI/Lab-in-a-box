@@ -1,0 +1,31 @@
+import RPi.GPIO as GPIO
+import time
+
+GPIO.setmode(GPIO.BCM)                    # Set up BCM GPIO numbering
+GPIO.setwarnings(False)                   # disable warnings
+
+SERVO_PIN = 18                            # GPIO18 as Servo pin
+GPIO.setup(SERVO_PIN,GPIO.OUT)            # Set GPIO18 as an output
+servo = GPIO.PWM(SERVO_PIN,50)            # Set PWM to 50Hz
+servo.start(0)                            # Start PWM at 0% duty cycle
+
+try:
+    while(1):
+        # Rotate Servo 0 to 180 degrees by changing duty cycle
+        for i in range(0,180,1):
+            servo.ChangeDutyCycle(2+(i/18))
+            time.sleep(0.1)
+            servo.ChangeDutyCycle(0)
+            time.sleep(0.1)
+
+        # Rotate Servo 180 to 0 degrees by changing duty cycle
+        for i in range(180,0,-1):
+            servo.ChangeDutyCycle(2+(i/18))
+            time.sleep(0.1)
+            servo.ChangeDutyCycle(0)
+            time.sleep(0.1)
+except KeyboardInterrupt:                  # If CTRL+C is pressed, exit cleanly:
+    pass
+
+servo.stop()  # Stop the PWM output
+GPIO.cleanup()
