@@ -1,0 +1,63 @@
+#include <reg51.h>
+sfr lcd_data_port = 0xB0;             //P3 port as data port
+sbit rs = P2 ^ 0;                     //Register select pin
+sbit rw = P2 ^ 1;                     //Read/Write pin
+sbit en = P2 ^ 2;                     //Enable pin  
+
+void delay(unsigned int count)        //Function to provide delay Approx 1ms
+{
+    int i, j;
+    for (i = 0; i < count; i++)
+        for (j = 0; j < 112; j++);
+}
+
+void LCD_Command(unsigned char cmd)   //LCD command function
+{
+    lcd_data_port = cmd;
+    rs = 0;
+    rw = 0;
+    en = 1;
+    delay(1);
+    en = 0;
+    delay(5);
+}
+
+void LCD_Char(unsigned char char_data)   //LCD data write function
+{
+    lcd_data_port = char_data;
+    rs = 1;
+    rw = 0;
+    en = 1;
+    delay(1);
+    en = 0;
+    delay(5);
+}
+
+void LCD_String(unsigned char *str)   //send string to LCD function
+{
+    int i;
+    for (i = 0; str[i] != 0; i++)
+    {
+        LCD_Char(str[i]);
+    }
+}
+
+void LCD_Init(void)                  //LCD initialize function
+{
+    delay(20);
+    LCD_Command(0x38);              //Initialization of 16X2 LCD in 8bit mode
+    LCD_Command(0x0C);              //Display ON Cursor OFF
+    LCD_Command(0x06);              //Auto Increment cursor
+    LCD_Command(0x01);              //clear display
+    LCD_Command(0x80);              //cursor at home position
+}
+
+void main()
+{
+
+    LCD_Init();                    //initialization of LCD
+    LCD_String("Hi");              //write string on first line of LCD
+    LCD_Command(0xC0);             //next line
+    LCD_String("Hello World");     //write string on second line of LCD
+    while (1);
+}
