@@ -1,0 +1,184 @@
+// DHT11 Interfacing with 8051
+#include <reg51.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "LCD16x2_4bit.h"
+sbit DHT11=P2^1;        // Connect DHT11 Sensor Pin to P2.1 Pin 
+int I_RH,D_RH,I_Temp,D_Temp,CheckSum;
+
+void timer_delay20ms()      // Timer0 delay function 
+{
+    TMOD = 0x01;
+    TH0 = 0xB8;             // Load higher 8-bit in TH0 
+    TL0 = 0x0C;             // Load lower 8-bit in TL0 
+    TR0 = 1;                    // Start timer0 
+    while(TF0 == 0);    // Wait until timer0 flag set 
+    TR0 = 0;                    // Stop timer0 
+    TF0 = 0;                    // Clear timer0 flag 
+}
+
+void timer_delay30us() // Timer0 delay function 
+{
+    TMOD = 0x01;            // Timer0 mode1 (16-bit timer mode) 
+    TH0 = 0xFF;             // Load higher 8-bit in TH0 
+    TL0 = 0xF1;             // Load lower 8-bit in TL0 
+    TR0 = 1;                    // Start timer0 
+    while(TF0 == 0);    // Wait until timer0 flag set 
+    TR0 = 0;                    // Stop timer0 
+    TF0 = 0;                    // Clear timer0 flag 
+}
+
+void Request()          // Microcontroller send start pulse or request 
+{
+    DHT11 = 0;              // set to low pin 
+    timer_delay20ms();// wait for 20ms 
+    DHT11 = 1;              // set to high pin 
+}
+
+void Response()         // receive response from DHT11 
+{
+    while(DHT11==1);
+    while(DHT11==0);
+    while(DHT11==1);
+}
+
+int Receive_data()          // receive data 
+{
+    int q,c=0;  
+    for (q=0; q<8; q++)
+    {
+        while(DHT11==0);        // check received bit 0 or 1 
+        timer_delay30us();
+        if(DHT11 == 1)          // if high pulse is greater than 30ms 
+        c = (c<<1)|(0x01);  // then its logic HIGH 
+       
+        else                                // otherwise its logic LOW 
+        c = (c<<1);
+       
+        while(DHT11==1);
+    }
+    return c;
+}
+
+void main()
+{
+    unsigned char dat[20];
+    LCD_Init();                             //initialize LCD 
+   
+while(1)
+    {      
+        Request();                          // send start pulse 
+        Response();                         // receive response 
+       
+        I_RH=Receive_data();        // store first eight bit in I_RH     
+        D_RH=Receive_data();        // store next eight bit in D_RH   
+        I_Temp=Receive_data();  // store next eight bit in I_Temp 
+        D_Temp=Receive_data();  // store next eight bit in D_Temp 
+        CheckSum=Receive_data();// store next eight bit in CheckSum
+
+        if ((I_RH + D_RH + I_Temp + D_Temp) != CheckSum)
+        {
+            LCD_String_xy(0,0,"Error");
+        }
+       
+        else
+        {
+            sprintf(dat,"Hum = %d.%d",I_RH,D_RH);
+            LCD_String_xy(0,0,dat);
+            sprintf(dat,"Tem = %d.%d",I_Temp,D_Temp);  
+            LCD_String_xy(1,0,dat);
+            LCD_Char(0xDF);
+            LCD_String("C");
+            memset(dat,0,20);
+            sprintf(dat,"%d   ",CheckSum);
+            LCD_String_xy(1,13,dat);
+        }      
+        delay(100);
+    }  
+}
+
+//LCD16x2 4 bit 8051 interface
+
+#include <reg51.h>
+#include"LCD16x2_4bit.h"
+
+sfr LCD_Port=0x90;                          // P1 port as data port 
+sbit rs=P0^0;                               // Register select pin 
+sbit rw=P0^1;                               // Read/Write pin 
+sbit en=P0^2;                               // Enable pin 
+
+// Function to provide delay Approx 1ms with 11.0592 Mhz crystal
+void delay(unsigned int count)          
+{
+    int i,j;
+    for(i=0;i<count;i++)
+    for(j=0;j<112;j++);
+}
+
+void LCD_Command (char cmnd)    // LCD16x2 command funtion 
+{
+    LCD_Port =(LCD_Port & 0x0F) | (cmnd & 0xF0); // sending upper nibble 
+    rs=0;                                           // command reg. 
+    rw=0;                                           // Write operation
+    en=1;
+    delay(1);
+    en=0;
+    delay(2);
+
+    LCD_Port = (LCD_Port & 0x0F) | (cmnd << 4);  // sending lower nibble
+    en=1;                                           // enable pulse
+    delay(1);
+    en=0;
+    delay(5);
+}
+
+void LCD_Char (char char_data)  // LCD data write function 
+{
+    LCD_Port =(LCD_Port & 0x0F) | (char_data & 0xF0); //sending upper nibble     
+    rs=1;                                               //Data reg.
+    rw=0;                                               //Write operation
+    en=1;                  
+    delay(1);
+    en=0;
+    delay(2);
+
+    LCD_Port = (LCD_Port & 0x0F) | (char_data << 4);  // sending lower nibble 
+    en=1;                                           // enable pulse 
+    delay(1);
+    en=0;
+    delay(5);
+}
+
+void LCD_String (char *str)         // Send string to LCD function 
+{
+    int i;
+    for(i=0;str[i]!=0;i++)              // Send each char of string till the NULL 
+    {
+        LCD_Char (str[i]);                  // Call LCD data write 
+    }
+}
+
+void LCD_String_xy (char row, char pos, char *str)  // Send string to LCD function 
+{
+    if (row == 0)
+    LCD_Command((pos & 0x0F)|0x80); / Command of first row and required position<16 
+    else if (row == 1)
+    LCD_Command((pos & 0x0F)|0xC0); // Command of first row and required position<16 
+    LCD_String(str);                                // Call LCD string function 
+}
+
+void LCD_Init (void)                            // LCD Initialize function 
+{
+    delay(20);                  // LCD Power ON Initialization time >15ms 
+   
+    LCD_Command (0x02);             // 4bit mode 
+    LCD_Command (0x28);             // Initialization of 16X2 LCD in 4bit mode 
+    LCD_Command (0x0C);             // Display ON Cursor OFF 
+    LCD_Command (0x06);             // Auto Increment cursor 
+    LCD_Command (0x01);             // clear display 
+    delay(3);
+    LCD_Command (0x80);             // cursor at home position
+}
+
+//Both codes should be inside Source Group 1 //
