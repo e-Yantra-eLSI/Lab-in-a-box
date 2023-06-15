@@ -1,0 +1,32 @@
+#include <reg51.h>
+void delay(void);
+
+sbit ldr = P0 ^ 0;
+sbit led = P1 ^ 1;
+void main()
+{
+    P0 = 0xFF; //assigning as input port
+    P1 = 0x00; //assigning as output port
+
+    while (1)
+    {
+        if (ldr == 0)
+            led = 1;
+        delay();
+
+        if (ldr == 1)
+            led = 0;
+        delay();
+    }
+}
+
+void delay()  //delay function
+{
+    int i, j;
+    for (i = 0; i < 500; i++)
+    {
+        for (j = 0; j < 1000; j++)
+        {
+        }
+    }
+}
