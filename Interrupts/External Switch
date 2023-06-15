@@ -1,0 +1,36 @@
+#include <reg51.h>
+void delay (void);
+sbit button= P0^0;
+sbit led=P1^1;
+void ISR_ex0(void);
+void delay();
+void main()
+{
+        P0 = 0x00;                  //setting as output port
+        P1 = 0x00;                  //setting as output port
+        P2 = 0x00;                  //setting as output port
+        P3 = 0x04;                  //setting P3.4 as input pin for interrupt0
+        IE=0x81;            
+        IT0=1;
+while(1)
+{
+        led=1;
+}
+}
+ 
+void ex0_isr (void) interrupt 0     //ISR(interrupt service routine) for external interrupt
+{
+       led=~led;
+       delay();
+}
+
+void delay()
+{
+  int i,j;
+  for(i=0;i<500;i++)
+  {
+    for(j=0;j<1000;j++)
+    {
+    }
+  }
+}
