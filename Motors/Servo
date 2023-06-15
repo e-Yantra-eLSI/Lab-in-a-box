@@ -1,0 +1,35 @@
+module servo(input clk,output reg servo);
+
+integer countk=0;
+integer count=0;
+
+always@(posedge clk)
+begin
+
+countk<=countk+1;    //incrementing countk for generating PWM
+if(countk==1000000)
+countk<=0;
+
+count<=count+1;      //incrementing count for delay
+if(count==20000000)  //count=20000000 is eauivalent to 4 seconds
+count<=0;
+
+if(count<10000000)   //for first 2 seconds
+begin
+if(countk<120000)    //120000 is the TON(on time period) i.e.2400µs for 90 degrees
+servo=1;
+else
+servo=0;
+end
+
+if(count>10000000)  //for next 2 seconds
+begin
+
+if(count<70000)  //70000 is the TON(on time period) i.e.1400µs for 0 degrees
+servo=1;
+else
+servo=0;
+end
+
+end
+endmodule
