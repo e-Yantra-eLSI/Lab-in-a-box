@@ -1,0 +1,25 @@
+import RPi.GPIO as GPIO  
+import time  
+GPIO.setwarnings(False)     # disable warnings
+GPIO.setmode(GPIO.BCM)      # Set up BCM GPIO numbering      
+LDR_PIN = 23                # GPIO23 (pin 16) connected to LDR
+LED_PIN = 24                # GPIO24 (pin 18) connected to LED
+GPIO.setup(LDR_PIN, GPIO.IN)   # LDR pin set as input
+GPIO.setup(LED_PIN, GPIO.OUT)  # LED pin set as output
+
+GPIO.output(LED_PIN, GPIO.LOW) # Turn off the LED
+try:
+    while True:  
+        # If the LDR sensor detects light, LED is turned on
+        if GPIO.input(LDR_PIN):
+            GPIO.output(LED_PIN, GPIO.HIGH) # Turn on the LED
+            print("Light Not Detected")
+        # Otherwise, LED is turned off
+        else:
+            GPIO.output(LED_PIN, GPIO.LOW)
+            print("Light Detected")
+           
+except KeyboardInterrupt:      # If CTRL+C is pressed, exit cleanly:
+    pass
+
+GPIO.cleanup()  
