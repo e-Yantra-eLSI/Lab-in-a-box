@@ -1,0 +1,26 @@
+import RPi.GPIO as GPIO
+
+# Set GPIO mode and pins
+GPIO.setmode(GPIO.BCM)
+encoder_pin = 17
+count = 0
+
+# Set up interrupt handler
+
+def encoder_interrupt(channel):
+    global count
+    # Increment the count
+    count += 1
+    print("Interrupt detected! Count:", count)
+
+# Configure interrupt on rising edge
+GPIO.setup(encoder_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(encoder_pin, GPIO.RISING, callback=encoder_interrupt)
+
+# Main program loop
+try:
+    while True:
+        pass
+
+except KeyboardInterrupt:
+    GPIO.cleanup()
