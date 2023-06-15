@@ -1,0 +1,26 @@
+import RPi.GPIO as GPIO
+import time
+
+GPIO.setmode(GPIO.BCM)            # Set up BCM GPIO numbering
+FAN_PIN = 19                      # GPIO19 as FAN Pin
+GPIO.setup(FAN_PIN, GPIO.OUT)     # Set GPIO as output
+
+FAN = GPIO.PWM(FAN_PIN, 100)      # Set Frequency to 100Hz
+
+FAN.start(0)                      # Start PWM output, Duty Cycle = 0
+
+try:
+    while (1):                   # Loop until keyboard interrupt
+        # Increase duty cycle: 0~50
+        for x in range(50):
+            FAN.ChangeDutyCycle(x)
+            time.sleep(0.1)
+        # Decrease duty cycle: 50~0
+        for x in range(50):
+            FAN.ChangeDutyCycle(50-x)
+            time.sleep(0.1)
+except KeyboardInterrupt:
+    pass
+
+FAN.stop()
+GPIO.cleanup()
