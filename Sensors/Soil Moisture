@@ -1,0 +1,232 @@
+#include "inc/tm4c123gh6pm.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <string.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/timer.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/adc.h"
+
+#define LCD (*((volatile uint32_t *)0x400053FC)) // LCD port with Tiva C
+#define RS 0x01                                  // RS -> PB0 (0x01)
+#define RW 0x02                                  // RW -> PB1 (0x02)
+#define EN 0x04                                  // EN -> PB2 (0x04)
+#define DATA_MASK 0xF0                           // Mask for data lines PB4, PB5, PB6, PB7
+
+// Function declarations
+void init_adc();
+void init_lcd();
+void update_lcd(uint32_t adcResult);
+void LCD4bits_Init(void);
+void LCD_Write4bits(uint8_t data, uint8_t control);
+void LCD_WriteString(const char *str);
+void LCD4bits_Cmd(uint8_t command);
+void LCD4bits_Data(uint8_t data);
+void delayMs(int n);
+void delayUs(int n);
+int integer_to_string(char *buf, size_t bufsize, int n);
+
+int main(void)
+{
+    uint32_t adcResult;
+    float soilmoisture;
+
+    // Set the system clock
+    SysCtlClockSet(SYSCTL_SYSDIV_10 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN);
+
+    // Initialize ADC and other peripherals
+    init_adc();
+    init_lcd();
+
+    // ...
+
+    uint32_t adcMin = 0;    // Replace with the minimum ADC reading
+    uint32_t adcMax = 4095; // Replace with the maximum ADC reading
+
+    while (1) 
+    {
+        ADCProcessorTrigger(ADC0_BASE, 3);
+
+        while (!ADCIntStatus(ADC0_BASE, 3, false))
+        {
+            // Wait for ADC conversion to complete
+            SysCtlDelay(100);
+        }
+
+        ADCIntClear(ADC0_BASE, 3);
+        ADCSequenceDataGet(ADC0_BASE, 3, &adcResult);
+        //        update_lcd(adcResult);
+
+        // Scale ADC result to desired range
+        uint32_t soilmoisture = 100 - ((adcResult - adcMin) * 100 / (adcMax - adcMin));
+
+        // Update the LCD display with the water level
+        update_lcd(soilmoisture);
+
+        delayMs(1000);
+
+        SysCtlDelay(30000);
+    }
+}
+
+void init_adc()
+{
+    // Enable ADC0 and GPIOE peripheral
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
+    SysCtlDelay(3);
+
+    // Configure ADC clock
+    ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PLL | ADC_CLOCK_RATE_FULL, 1);
+
+    // Configure ADC pin
+    GPIOPinTypeADC(GPIO_PORTE_BASE, GPIO_PIN_3);
+
+    // Configure ADC sequence
+    ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_PROCESSOR, 0);
+    ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE | ADC_CTL_END); // Configure for channel 0 (AIN0)
+    ADCSequenceEnable(ADC0_BASE, 3);
+    ADCIntClear(ADC0_BASE, 3);
+}
+
+void init_lcd()
+{
+    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R1;        // Enable clock for PORTB
+    delayMs(10);                                    // Delay 10 ms to enable the clock of PORTB
+    GPIO_PORTB_DIR_R |= (RS | RW | EN | DATA_MASK); // Set PORTB pins as output
+    GPIO_PORTB_DEN_R |= (RS | RW | EN | DATA_MASK); // Enable PORTB digital IO pins
+
+    // LCD initialization sequence
+    LCD4bits_Cmd(0x33); // Initialize LCD in 4-bit mode
+    LCD4bits_Cmd(0x32); // Initialize LCD in 4-bit mode
+    LCD4bits_Cmd(0x28); // 2 lines and 5x7 character (4-bit data, D4 to D7)
+    LCD4bits_Cmd(0x06); // Automatic Increment cursor (shift cursor to the right)
+    LCD4bits_Cmd(0x0C); // Display on, cursor off
+}
+
+void update_lcd(uint32_t adcResult)
+{
+    char soilmoistureStr[10];
+    integer_to_string(soilmoistureStr, sizeof(soilmoistureStr), adcResult);
+    LCD4bits_Cmd(0x01); // Clear the display
+    LCD4bits_Cmd(0x80); // Force the cursor to the beginning of the 1st line
+    delayMs(10);        // Delay 10 ms after initialization
+    LCD_WriteString("Soil Moisture: ");
+
+    // Set the cursor to the beginning of the second line (address 0x40)
+    LCD4bits_Cmd(0xC0);
+
+    LCD_WriteString(soilmoistureStr);
+    LCD_WriteString("%");
+}
+
+void LCD4bits_Init(void)
+{
+    LCD_Write4bits(0x30, 0);
+    delayMs(1);
+    LCD_Write4bits(0x30, 0);
+    delayUs(40);
+    LCD_Write4bits(0x30, 0);
+    delayUs(40);
+    LCD_Write4bits(0x20, 0); // Set 4-bit mode
+    delayUs(40);
+    LCD4bits_Cmd(0x28); // 2 lines and 5x7 character (4-bit data, D4 to D7)
+    LCD4bits_Cmd(0x06); // Automatic Increment cursor (shift cursor to the right)
+    LCD4bits_Cmd(0x0C); // Display on, cursor off
+}
+
+void LCD_Write4bits(uint8_t data, uint8_t control)
+{
+    data &= DATA_MASK;
+    control &= ~(DATA_MASK | RW | EN);
+    LCD = (LCD & ~(DATA_MASK | RS | RW | EN)) | (data | control);
+    LCD |= EN;
+    delayUs(1);
+    LCD &= ~EN;
+    LCD &= ~(DATA_MASK | RS | RW | EN);
+}
+
+void LCD_WriteString(const char *str)
+{
+    int i = 0;
+
+    while (str[i] != '\0')
+    {
+        LCD4bits_Data(str[i]);
+        i++;
+    }
+}
+
+void LCD4bits_Cmd(uint8_t command)
+{
+    LCD_Write4bits(command & DATA_MASK, 0);
+    LCD_Write4bits(command << 4, 0);
+
+    if (command < 4)
+        delayMs(2);
+    else
+        delayUs(40);
+}
+
+void LCD4bits_Data(uint8_t data)
+{
+    LCD_Write4bits(data & DATA_MASK, RS);
+    LCD_Write4bits(data << 4, RS);
+    delayUs(40);
+}
+
+void delayMs(int n)
+{
+    SysCtlDelay(n * (SysCtlClockGet() / 3000));
+}
+
+void delayUs(int n)
+{
+    SysCtlDelay(n * (SysCtlClockGet() / 3000000));
+}
+
+int integer_to_string(char *buf, size_t bufsize, int n)
+{
+    if (buf == NULL || bufsize == 0)
+        return -1;
+
+    memset(buf, 0, bufsize);
+    int len = 0;
+
+    if (n == 0)
+    {
+        buf[0] = '0';
+        return 1;
+    }
+
+    if (n < 0)
+    {
+        buf[0] = '-';
+        len++;
+        n = -n;
+    }
+
+    int temp = n;
+    while (temp)
+    {
+        len++;
+        temp /= 10;
+    }
+
+    if (len >= bufsize)
+        return -1;
+
+    int i = len - 1;
+    while (n)
+    {
+        buf[i] = '0' + (n % 10);
+        n /= 10;
+        i--;
+    }
+
+    return len;
+}
