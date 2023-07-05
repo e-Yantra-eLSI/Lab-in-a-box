@@ -1,0 +1,151 @@
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/uart.h"
+#include "utils/uartstdio.h"
+
+#define DHT11_PORT GPIO_PORTD_BASE
+#define DHT11_PIN GPIO_PIN_0
+
+void delay_ms(uint32_t ms)
+{
+    SysCtlDelay((SysCtlClockGet() / 3) / 1000 * ms);
+}
+
+void delay_us(uint32_t us)
+{
+    // Calculate the number of clock cycles required for the given delay
+    uint32_t cycles = (SysCtlClockGet() / 3) / 1000000 * us;
+
+    // Wait for the specified number of clock cycles
+    SysCtlDelay(cycles);
+}
+
+void DHT11_start(void)
+{
+    // Pull the data pin low for at least 18ms to initiate start pulse
+    GPIOPinTypeGPIOOutput(DHT11_PORT, 1);
+
+    GPIOPinWrite(DHT11_PORT, DHT11_PIN, 0);
+    delay_ms(20);
+
+    // Pull the data pin high and wait for response pulse
+    GPIOPinWrite(DHT11_PORT, DHT11_PIN, 1);
+}
+
+bool DHT11_check_response(void)
+{
+
+    // Switch the data pin to input mode
+    GPIOPinTypeGPIOInput(DHT11_PORT, DHT11_PIN);
+
+    // Wait for the response pulse to go low (GND)
+    while (GPIOPinRead(DHT11_PORT, DHT11_PIN) == 1)
+        ;
+    while (GPIOPinRead(DHT11_PORT, DHT11_PIN) == 0)
+        ;
+    while (GPIOPinRead(DHT11_PORT, DHT11_PIN) == 1)
+        ;
+    return true;
+}
+
+void DHT11_read_data(uint8_t *humidity_int, uint8_t *humidity_dec,
+                     uint8_t *temperature_int, uint8_t *temperature_dec,
+                     uint8_t *checksum)
+{
+    uint8_t data[5] = {0};
+    uint8_t i, j;
+
+    // Read 5 bytes (40 bits) of data from the DHT11 sensor
+    for (i = 0; i < 5; i++)
+    {
+        for (j = 0; j < 8; j++)
+        {
+            while (GPIOPinRead(DHT11_PORT, DHT11_PIN) == 0)
+                ;
+            delay_us(30);
+            if (GPIOPinRead(DHT11_PORT, DHT11_PIN) == DHT11_PIN)
+            {
+                data[i] = ((data[i] << 1) | 0x01);
+            }
+            else
+            {
+                data[i] = (data[i] << 1);
+            }
+            while (GPIOPinRead(DHT11_PORT, DHT11_PIN) == DHT11_PIN)
+                ;
+        }
+    }
+
+    // Extract the sensor data from the received bytes
+    *humidity_int = data[0];
+    *humidity_dec = data[1];
+    *temperature_int = data[2];
+    *temperature_dec = data[3];
+    *checksum = data[4];
+
+    // Calculate the checksum
+    uint8_t calculated_checksum = *humidity_int + *humidity_dec +
+                                  *temperature_int + *temperature_dec;
+
+    // Compare the calculated checksum with the received checksum
+    if (*checksum != calculated_checksum)
+    {
+        UARTprintf("Checksum error!\n");
+    }
+}
+
+int main(void)
+{
+    // Set the clocking to run at 50MHz
+    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+                   SYSCTL_XTAL_16MHZ);
+
+    // Enable UART0 and GPIOA
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+
+    // Configure GPIO pins for UART0
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+    // Initialize UART0
+    UARTStdioConfig(0, 115200, SysCtlClockGet());
+
+    // Enable the GPIO port for the DHT11 data pin
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+
+    // Main loop
+    while (1)
+    {
+        UARTprintf("DHT11 SENSOR DATA\n");
+
+        uint8_t humidity_int, humidity_dec, temperature_int, temperature_dec, checksum;
+
+        // Start communication with DHT11 sensor
+        DHT11_start();
+
+        // Check for response from DHT11 sensor
+        if (!DHT11_check_response())
+        {
+            UARTprintf("DHT11 sensor did not respond!\n");
+            continue;
+        }
+
+        // Read data from DHT11 sensor
+        DHT11_read_data(&humidity_int, &humidity_dec, &temperature_int,
+                        &temperature_dec, &checksum);
+
+        // Print the sensor data
+        UARTprintf("Humidity: %d.%d%%\n", humidity_int, humidity_dec);
+        UARTprintf("Temperature: %d.%d°C\n", temperature_int, temperature_dec);
+    }
+}
