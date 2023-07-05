@@ -1,0 +1,50 @@
+#include "inc/tm4c123gh6pm.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/uart.h"
+
+void delay(uint32_t milliseconds);
+void buzzerBeep(void);
+
+int main(void)
+{
+    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R1; // Enable GPIO Port B
+    GPIO_PORTB_DIR_R |= (1 << 6);            // Set PB6 as output
+    GPIO_PORTB_DEN_R |= (1 << 6);            // Enable digital function on PB6
+
+    int i;
+
+    // Generate five beeps
+    for (i = 0; i < 5; i++)
+    {
+        buzzerBeep();
+        delay(500); // Delay for 500 milliseconds between beeps
+    }
+
+    // Turn off the buzzer
+    GPIO_PORTB_DATA_R &= ~(1 << 6);
+}
+
+void delay(uint32_t milliseconds)
+{
+    // Assumes a 16 MHz system clock
+    uint32_t count = (milliseconds * 16000);
+    while (count > 0)
+    {
+        count--;
+    }
+}
+
+void buzzerBeep(void)
+{
+    GPIO_PORTB_DATA_R |= (1 << 6);  // Turn on the buzzer
+    delay(100);                     // Beep duration
+    GPIO_PORTB_DATA_R &= ~(1 << 6); // Turn off the buzzer
+    delay(100);                     // Delay between beeps
+}
