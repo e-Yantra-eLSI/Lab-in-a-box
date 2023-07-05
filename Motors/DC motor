@@ -1,0 +1,76 @@
+#include "inc/tm4c123gh6pm.h"
+#include <stdint.h>
+
+void Delay_ms(int time_ms);
+int duty_cycle = 4999;
+
+void PWM_init(void);
+void Turn_OtherDirection(void);
+void Turn_oneDirection(void);
+
+int main(void)
+{
+    PWM_init();
+    Turn_oneDirection();
+
+    for (;;)
+    {
+        duty_cycle = duty_cycle - 10;
+        if (duty_cycle <= 0)
+            duty_cycle = 5000;
+        PWM1_3_CMPA_R = duty_cycle;
+        Delay_ms(100);
+    }
+}
+
+// Spin motor in one direction by giving IN1 and IN2 signals to L298N
+void Turn_oneDirection(void)
+{
+    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R0; // Enable clock to PORTA
+    GPIO_PORTA_DIR_R |= (1 << 3) | (1 << 2); // Set pins as outputs
+    GPIO_PORTA_DEN_R |= (1 << 3) | (1 << 2); // Enable digital function
+    GPIO_PORTA_DATA_R |= (1 << 2);           // Set IN1 to HIGH
+    GPIO_PORTA_DATA_R &= ~(1 << 3);          // Set IN2 to LOW
+}
+
+// Spin motor in the other direction by giving IN1 and IN2 signals to L298N
+void Turn_OtherDirection(void)
+{
+    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R0; // Enable clock to PORTA
+    GPIO_PORTA_DIR_R |= (1 << 3) | (1 << 2); // Set pins as outputs
+    GPIO_PORTA_DEN_R |= (1 << 3) | (1 << 2); // Enable digital function
+    GPIO_PORTA_DATA_R |= (1 << 3);           // Set IN1 to HIGH
+    GPIO_PORTA_DATA_R &= ~(1 << 2);          // Set IN2 to LOW
+}
+
+void PWM_init(void)
+{
+    SYSCTL_RCGCPWM_R |= SYSCTL_RCGCPWM_R1;                                                               // Enable clock to PWM1 module
+    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R5;                                                             // Enable system clock to PORTF
+    SYSCTL_RCC_R = (SYSCTL_RCC_R & ~SYSCTL_RCC_USEPWMDIV) | SYSCTL_RCC_USEPWMDIV | SYSCTL_RCC_PWMDIV_64; // Use pre-divider value of 64 and provide clock to PWM1 module
+
+    GPIO_PORTF_AFSEL_R |= (1 << 2);                                                    // Set PF2 as alternate function
+    GPIO_PORTF_PCTL_R = (GPIO_PORTF_PCTL_R & ~GPIO_PCTL_PF2_M) | GPIO_PCTL_PF2_M1PWM6; // Set PF2 as PWM output pin
+    GPIO_PORTF_DEN_R |= (1 << 2);                                                      // Set PF2 as digital pin
+
+    PWM1_3_CTL_R = 0;                                                  // Disable PWM Generator 3
+    PWM1_3_GENA_R = PWM_3_GENA_ACTCMPAD_ZERO | PWM_3_GENA_ACTLOAD_ONE; // Set PWM output when counter reloads and clear when matches PWMCMPA
+    PWM1_3_LOAD_R = 5000;                                              // Set load value for 50Hz (16MHz/64)/50 = 5000
+    PWM1_3_CMPA_R = 4999;                                              // Set duty cycle to minimum value
+    PWM1_3_CTL_R = PWM_3_CTL_ENABLE;                                   // Enable PWM Generator 3
+    PWM1_ENABLE_R = PWM_ENABLE_PWM6EN;                                 // Enable PWM1 channel 6 output
+}
+
+void Delay_ms(int time_ms)
+{
+    int i, j;
+    for (i = 0; i < time_ms; i++)
+        for (j = 0; j < 3180; j++)
+        {
+        } // Execute NOP for 1ms
+}
+
+void SystemInit(void)
+{
+    (*((volatile uint32_t *)0xE000ED88)) |= 0x00F00000;
+}
