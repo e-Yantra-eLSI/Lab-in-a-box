@@ -1,0 +1,101 @@
+#include "inc/tm4c123gh6pm.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/uart.h"
+#include "utils/uartstdio.h"
+
+#define LED_GPIO_PERIPH SYSCTL_PERIPH_GPIOF
+#define LED_GPIO_BASE GPIO_PORTF_BASE
+#define LED_PIN GPIO_PIN_2
+
+#define SWITCH_GPIO_PERIPH SYSCTL_PERIPH_GPIOF
+#define SWITCH_GPIO_BASE GPIO_PORTF_BASE
+#define SWITCH_PIN GPIO_PIN_4
+
+volatile bool switchPressed = false;
+
+void SwitchIntHandler(void)
+{
+    // Clear the interrupt
+    GPIOIntClear(SWITCH_GPIO_BASE, SWITCH_PIN);
+
+    // Set the switchPressed flag
+    switchPressed = true;
+}
+
+void LEDOn(void)
+{
+    // Turn on the LED
+    GPIOPinWrite(LED_GPIO_BASE, LED_PIN, LED_PIN);
+
+    // Print a message
+    UARTprintf("External LED turned ON!\n");
+}
+
+void LEDOff(void)
+{
+    // Turn off the LED
+    GPIOPinWrite(LED_GPIO_BASE, LED_PIN, 0);
+
+    // Print a message
+    UARTprintf("External LED turned OFF!\n");
+}
+
+int main(void)
+{
+    // Set the system clock to 40MHz
+    SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+
+    // Enable peripherals
+    SysCtlPeripheralEnable(LED_GPIO_PERIPH);
+    SysCtlPeripheralEnable(SWITCH_GPIO_PERIPH);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+
+    // Configure the LED pin as output
+    GPIOPinTypeGPIOOutput(LED_GPIO_BASE, LED_PIN);
+
+    // Configure the switch pin as input
+    GPIOPinTypeGPIOInput(SWITCH_GPIO_BASE, SWITCH_PIN);
+
+    // Enable internal pull-up for the switch pin
+    GPIOPadConfigSet(SWITCH_GPIO_BASE, SWITCH_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+
+    // Enable interrupt for the switch pin
+    GPIOIntEnable(SWITCH_GPIO_BASE, SWITCH_PIN);
+    GPIOIntTypeSet(SWITCH_GPIO_BASE, SWITCH_PIN, GPIO_FALLING_EDGE);
+    GPIOIntRegister(SWITCH_GPIO_BASE, SwitchIntHandler);
+
+    // Enable global interrupts
+    IntMasterEnable();
+
+    // Configure UART0 pins
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+    // Initialize UART0 for console output
+    UARTStdioConfig(0, 115200, SysCtlClockGet());
+
+    while (1)
+    {
+        if (switchPressed)
+        {
+            switchPressed = false;
+            if (GPIOPinRead(SWITCH_GPIO_BASE, SWITCH_PIN) == 0)
+            {
+                LEDOn();
+            }
+            else
+            {
+                LEDOff();
+            }
+        }
+    }
+}
