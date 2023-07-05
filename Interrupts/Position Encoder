@@ -1,0 +1,62 @@
+#include "inc/tm4c123gh6pm.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/uart.h"
+#include "utils/uartstdio.h"
+
+volatile uint32_t interruptCount = 0;
+
+int main(void)
+{
+    // Set the system clock to run at 50 MHz
+    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+
+    // Enable the GPIO peripherals
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF); // Enable GPIOF for LED control
+
+    // Configure the GPIO pin connected to MOC7811 sensor
+    GPIOPinTypeGPIOInput(GPIO_PORTA_BASE, GPIO_PIN_6); // Replace X with the pin number
+
+    // Configure the LED pin as an output
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1); // Use pin PF1 for LED control
+
+    // Configure UART0 pins
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+    // Initialize UART for printing
+    UARTStdioConfig(0, 115200, SysCtlClockGet());
+
+    // Variable to store the previous sensor value
+    bool previousSensorValue = false;
+
+    while (1)
+    {
+        // Read the sensor input
+        bool sensorValue = GPIOPinRead(GPIO_PORTA_BASE, GPIO_PIN_6); // Replace X with the pin number
+
+        // Check if rising edge detected (low to high transition)
+        if (sensorValue && !previousSensorValue)
+        {
+            // Increment the interrupt count
+            interruptCount++;
+
+            // Toggle the LED
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1); // Turn on the LED
+
+            // Print the interrupt count to the terminal
+            UARTprintf("Interrupt detected! Count: %u\n", interruptCount);
+        }
+
+        // Store the current sensor value as previous
+        previousSensorValue = sensorValue;
+    }
+}
