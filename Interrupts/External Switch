@@ -1,0 +1,37 @@
+import RPi.GPIO as GPIO
+
+# Set GPIO mode and setup the input pin for the switch
+GPIO.setmode(GPIO.BCM)
+switch_pin = 17  # GPIO pin connected to the switch
+GPIO.setup(switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+# Set up the output pin for the LED
+led_pin = 18  # GPIO pin connected to the LED
+GPIO.setup(led_pin, GPIO.OUT)
+GPIO.output(led_pin, GPIO.LOW)  # Turn off the LED initially
+
+# Define the interrupt callback function
+
+
+def switch_callback(channel):
+    if GPIO.input(channel) == GPIO.LOW:
+        print("Switch pressed")
+        GPIO.output(led_pin, GPIO.HIGH)  # Turn on the LED
+    else:
+        print("Switch released")
+        GPIO.output(led_pin, GPIO.LOW)  # Turn off the LED
+
+
+# Add interrupt event detection
+GPIO.add_event_detect(switch_pin, GPIO.BOTH,
+                      callback=switch_callback, bouncetime=200)
+
+try:
+    # Your main program logic can go here
+    while True:
+        # Perform other tasks
+        pass
+
+except KeyboardInterrupt:
+    # Clean up GPIO settings on program exit
+    GPIO.cleanup()
