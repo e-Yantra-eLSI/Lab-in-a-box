@@ -1,0 +1,53 @@
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/pwm.h"
+
+#define TWO_SECOND 2000000 // Two-second delay in microseconds
+
+int main(void)
+{
+    // Set the system clock to run at 50 MHz
+    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+
+    // Enable the GPIO Port A
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOA))
+        ;
+
+    // Enable the PWM1 module
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_PWM1);
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_PWM1))
+        ;
+
+    // Configure PA6 as PWM output pin
+    GPIOPinConfigure(GPIO_PA6_M1PWM2);
+    GPIOPinTypePWM(GPIO_PORTA_BASE, GPIO_PIN_6);
+
+    // Configure PWM1 module
+    PWMGenConfigure(PWM1_BASE, PWM_GEN_1, PWM_GEN_MODE_DOWN);
+    PWMGenPeriodSet(PWM1_BASE, PWM_GEN_1, 32000);   // Set period to 32000 cycles (1 ms)
+    PWMPulseWidthSet(PWM1_BASE, PWM_OUT_2, 1600);   // Set initial pulse width to 1600 cycles (0.1 ms)
+    PWMOutputState(PWM1_BASE, PWM_OUT_2_BIT, true); // Enable PWM output
+
+    // Enable PWM generator
+    PWMGenEnable(PWM1_BASE, PWM_GEN_1);
+
+    while (1)
+    {
+        // Set servo to 0-degree position (1 ms pulse width)
+        PWMPulseWidthSet(PWM1_BASE, PWM_OUT_2, 800);
+        SysCtlDelay(TWO_SECOND);
+
+        // Set servo to 90-degree position (1.5 ms pulse width)
+        PWMPulseWidthSet(PWM1_BASE, PWM_OUT_2, 2400);
+        SysCtlDelay(TWO_SECOND);
+
+        // Set servo to 180-degree position (2 ms pulse width)
+        PWMPulseWidthSet(PWM1_BASE, PWM_OUT_2, 4000);
+        SysCtlDelay(TWO_SECOND);
+    }
+}
