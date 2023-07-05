@@ -1,0 +1,60 @@
+#include "inc/tm4c123gh6pm.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "driverlib/adc.h"
+#include "inc/hw_types.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/uart.h"
+#include "utils/uartstdio.h"
+
+#define LIGHT_SENSOR_GPIO_BASE GPIO_PORTB_BASE
+#define LIGHT_SENSOR_GPIO_PIN GPIO_PIN_6
+
+bool readLightStatus(void)
+{
+    return (GPIOPinRead(LIGHT_SENSOR_GPIO_BASE, LIGHT_SENSOR_GPIO_PIN) != 0); // sensor might be inverted: try (GPIOPinRead(LIGHT_SENSOR_GPIO_BASE, LIGHT_SENSOR_GPIO_PIN) == 0) if inverted output
+}
+
+int main(void)
+{
+    SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+
+    // Enable peripherals for GPIO port B and UART0
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+
+    // Configure UART0 pins
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+    // Initialize UART0 for console output
+    UARTStdioConfig(0, 115200, SysCtlClockGet());
+
+    // Configure GPIO pin for the light sensor as input
+    GPIOPinTypeGPIOInput(LIGHT_SENSOR_GPIO_BASE, LIGHT_SENSOR_GPIO_PIN);
+    GPIOPadConfigSet(LIGHT_SENSOR_GPIO_BASE, LIGHT_SENSOR_GPIO_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+
+    while (1)
+    {
+        // Read light status from sensor
+        bool lightDetected = readLightStatus();
+
+        // Print light status
+        if (lightDetected)
+        {
+            UARTprintf("Light Detected\n");
+        }
+        else
+        {
+            UARTprintf("Light Not Detected\n");
+        }
+
+        SysCtlDelay((SysCtlClockGet()) / 2);
+    }
+}
