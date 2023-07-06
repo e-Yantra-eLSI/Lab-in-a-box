@@ -1,0 +1,69 @@
+import spidev
+import time
+import RPi.GPIO as GPIO
+# import asciichartpy
+
+# SPI device
+spi = spidev.SpiDev()
+spi.open(0, 0)  # Set the SPI port (bus 0, device 0)
+spi.max_speed_hz = 1000000  # Set the SPI clock frequency (1 MHz)
+
+# AD8232 pin configuration
+AD8232_LO_POS_PIN = 17  # Leads off detection LO +
+AD8232_LO_NEG_PIN = 27  # Leads off detection LO -
+
+# GPIO setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(AD8232_LO_POS_PIN, GPIO.IN)
+GPIO.setup(AD8232_LO_NEG_PIN, GPIO.IN)
+
+
+def read_adc(channel):
+    # MCP3008 data format
+    # 0x01 - Start bit
+    # 0x80 - Single-ended mode, channel select (0 to 7)
+    # 0x00 - Null bit
+    adc_command = [0x01, (0x80 | channel) << 4, 0x00]
+    adc_data = spi.xfer2(adc_command)
+    adc_value = ((adc_data[1] & 0x03) << 8) + adc_data[2]  # 10-bit ADC value
+    return adc_value
+
+
+# Create empty lists for storing data
+timestamps = []
+adc_values = []
+
+while True:
+    try:
+        # Read the leads off detection status
+        lo_pos_status = GPIO.input(AD8232_LO_POS_PIN)
+        lo_neg_status = GPIO.input(AD8232_LO_NEG_PIN)
+
+        if lo_pos_status == 1 or lo_neg_status == 1:
+            print("Leads off detection triggered!")
+        else:
+            # Read the raw ADC value from the AD8232 sensor
+            # Assuming AD8232 is connected to channel 0
+            adc_value = read_adc(0)
+            print("VALUE: ", adc_value)
+
+            # Perform any necessary calculations or processing with the ADC value
+            # For example, you can convert it to voltage or perform some signal processing
+
+            # Store the timestamp and ADC value in the lists
+            timestamps.append(time.time())
+            adc_values.append(adc_value)
+
+            # Plot the ADC values on the terminal
+        # Plot the ADC values
+        # chart = asciichartpy.plot(adc_values, {'height': 10})
+        # print(chart)
+
+        time.sleep(0.5)  # Delay between readings
+
+    except KeyboardInterrupt:
+        break
+
+# Cleanup
+spi.close()
+GPIO.cleanup()
