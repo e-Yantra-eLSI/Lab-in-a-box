@@ -1,44 +1,35 @@
 #ifndef F_CPU
-#define F_CPU 16000000UL // set the CPU clock
 
+#define F_CPU 16000000UL // set the CPU clock
 #endif
 
 #include <avr/io.h>
-#include <util/delay.h>
 #include <avr/interrupt.h>
-// Function prototype for the interrupt service routine
-ISR(INT0_vect);
 
-int main(void)
-{
-  
+#define LED_PIN 1 // Define the pin for the LED (PORTC.1)
 
-    DDRD &= ~(1 << PD0);// Set PD2 (INT0 pin) as input
-    DDRC = 0xFF; // port c set as output port
-    // Enable external interrupt on falling edge of 
-    PORTC=0;
-    PORTD |= (1 << PD0);
-    EICRA |= (1 << ISC01);
-    EICRA &= ~(1 << ISC00);
+void initExternalInterrupt() {
+    EICRB |= (1 << ISC41); // Falling edge triggers the interrupt for INT4
+    EIMSK |= (1 << INT4); // Enable external interrupt INT4
+    sei(); // Enable global interrupts
+}
 
-    // Enable INT0 external interrupt
-    EIMSK |= (1 << INT0);
+void initLED() {
+    DDRC |= (1 << LED_PIN); // Set LED pin as an output
+}
 
-    // Enable global interrupts
-    sei();
+int main(void) {
+    initLED();
+    initExternalInterrupt();
 
-    while (1)
-    {
-        // Your main program logic here
+    while (1) {
+        // Your main program logic here (if required)
     }
-
     return 0;
 }
 
-// Interrupt service routine for INT0
-ISR(INT0_vect)
-{
-    // Interrupt handling code
-    PORTC = ~PORTC; /* Toggle PORTC */
-    _delay_ms(500);
+// External interrupt service routine for INT4
+ISR(INT4_vect) {
+    // Toggle the LED state
+    PORTC ^= (1 << LED_PIN); // Toggle the LED at PORTC.1
 }
