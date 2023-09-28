@@ -3,7 +3,7 @@
 #include <freertos/task.h>
 #include <driver/ledc.h>
 
-// Define the GPIO pin connected to the LED
+// Define the GPIO pin connected to the DC FAN
 #define FAN_PIN GPIO_NUM_4
 
 // PWM configuration
