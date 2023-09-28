@@ -31,6 +31,7 @@ void servoTask(void *pvParameters)
             // Set the duty cycle for the servo
             ledc_set_duty(LEDC_HIGH_SPEED_MODE, PWM_CHANNEL, duty);
             ledc_update_duty(LEDC_HIGH_SPEED_MODE, PWM_CHANNEL);
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -42,6 +43,7 @@ void servoTask(void *pvParameters)
             // Set the duty cycle for the servo
             ledc_set_duty(LEDC_HIGH_SPEED_MODE, PWM_CHANNEL, duty);
             ledc_update_duty(LEDC_HIGH_SPEED_MODE, PWM_CHANNEL);
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
