@@ -11,8 +11,7 @@ LOW_WATER_THRESHOLD = 50
 def read_soil_moisture(channel):
     # Sending start bit, single-ended channel selection, and null bits
     adc_data = spi.xfer2([1, (8 + channel) << 4, 0])
-    raw_value = ((adc_data[1] & 3) << 8) + \
-        adc_data[2]  # Combining the received bits
+    raw_value = ((adc_data[1] & 3) << 8) + adc_data[2]  # Combining the received bits
     # Calculating the percentage value
     percentage = int(((1023 - raw_value) / 1023.0) * 100)
     return percentage

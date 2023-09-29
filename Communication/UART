@@ -22,5 +22,6 @@ while True:
     ser.write(str.encode('Write counter: %d \n' % counter))
     time.sleep(1)
     counter += 1
+    print("Counter value = ", counter)
     x = ser.readline().strip().decode()  # Decoded the received data to string
-    print(x)
+    print("Message receuved from coordinator = ", x)
