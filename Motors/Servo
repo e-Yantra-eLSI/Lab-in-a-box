@@ -1,5 +1,4 @@
 #include <reg51.h>
-#include <intrins.h>
 #define PWM_Period 0xB7FE   //Define value to be loaded in timer for PWM period of 20 milli second
 sbit Servo_Motor_Pin = P2^0;
 unsigned int ON_Period, OFF_Period, DutyCycle;
